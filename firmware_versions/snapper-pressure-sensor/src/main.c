@@ -18,7 +18,7 @@
 #include "usbcallbacks.h"
 #include "usbdescriptors.h"
 #include "analogToDigitalConverter.h"
-#include "accelerometer.h"
+#include "pressuresensor.h"
 
 // LED pattern hyperparameters
 

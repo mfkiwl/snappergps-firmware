@@ -1,9 +1,9 @@
 /****************************************************************************
- * accelerometer.c
+ * pressuresensor.c
  * SnapperGPS
  * Jonas Beuchert
  * June 2023
- * Functions to use an LIS3DH-based 3-axis MEMS accelerometer via I2C
+ * Functions to use an MS5837-30BA a pressure and temperature sensor via I2C
  *****************************************************************************/
 
 #include "em_cmu.h"
@@ -16,7 +16,7 @@
 #include "timer.h"
 #include "pinouts.h"
 
-#include "accelerometer.h"
+#include "pressuresensor.h"
 
 // Ports and pins for I2C
 #define I2C_SDA_PORT            gpioPortA

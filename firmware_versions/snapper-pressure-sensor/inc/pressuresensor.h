@@ -1,13 +1,13 @@
 /****************************************************************************
- * accelerometer.h
+ * pressuresensor.h
  * SnapperGPS
  * Jonas Beuchert
  * June 2023
- * Functions to use an LIS3DH-based 3-axis MEMS accelerometer via I2C
+ * Functions to use an MS5837-30BA a pressure and temperature sensor via I2C
  *****************************************************************************/
 
-#ifndef __ACCELEROMETER_H
-#define __ACCELEROMETER_H
+#ifndef __PRESSURESENSOR_H
+#define __PRESSURESENSOR_H
 
 
 uint8_t Accelerometer_whoAmI();
@@ -50,4 +50,4 @@ void Accelerometer_disableInterface();
 
 bool Accelerometer_isAvailable();
 
-#endif /* __ACCELEROMETER_H */
+#endif /* __PRESSURESENSOR_H */
