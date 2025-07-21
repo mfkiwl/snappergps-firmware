@@ -19,7 +19,7 @@ SRC = $(SHARED)/device/src $(SHARED)/emlib/src $(SHARED)/emusb/src $(SHARED)/src
 
 # Set the name of the output files
 
-FILENAME = acceleration-snapper
+FILENAME = pressure-snapper
 
 # This is the location of the resulting object files
 
