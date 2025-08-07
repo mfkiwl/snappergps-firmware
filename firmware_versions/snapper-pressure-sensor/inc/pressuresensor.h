@@ -10,44 +10,21 @@
 #define __PRESSURESENSOR_H
 
 
-uint8_t Accelerometer_whoAmI();
+// Enable I2C for MS5837-30BA
+void PressureSensor_enableInterface();
 
-bool Accelerometer_isNewDataAvailable();
+// Disable I2C for MS5837-30BA
+void PressureSensor_disableInterface();
 
-void Accelerometer_readXYZ(int16_t *x, int16_t *y, int16_t *z);
+// Reset the MS5837-30BA sensor
+void PressureSensor_reset();
 
-void Accelerometer_selectDataRate(uint16_t dataRate);
+// Get raw pressure value from MS5837-30BA
+uint32_t PressureSensor_getRawPressure();
 
-void Accelerometer_enableLowPowerMode();
+// Get raw temperature value from MS5837-30BA
+uint32_t PressureSensor_getRawTemperature();
 
-void Accelerometer_disableLowPowerMode();
-
-void Accelerometer_selectFifoModeBypass();
-
-void Accelerometer_selectFifoModeFifo();
-
-void Accelerometer_selectFifoModeStream();
-
-void Accelerometer_selectFifoModeStreamToFifo();
-
-void Accelerometer_enableHighResolutionOutputMode();
-
-void Accelerometer_disableHighResolutionOutputMode();
-
-void Accelerometer_enableBlockDataUpdate();
-
-void Accelerometer_disableBlockDataUpdate();
-
-void Accelerometer_selectScale(uint8_t g);
-
-void Accelerometer_readCtrlReg(uint8_t *ctrlReg);
-
-// Enable I2C for LIS3DH
-void Accelerometer_enableInterface();
-
-// Disable I2C for LIS3DH
-void Accelerometer_disableInterface();
-
-bool Accelerometer_isAvailable();
+int32_t PressureSensor_calculatePressure(uint32_t rawPressure, uint32_t rawTemperature);
 
 #endif /* __PRESSURESENSOR_H */

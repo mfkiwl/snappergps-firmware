@@ -94,9 +94,9 @@
 #define SNAPSHOT_BUFFER_SIZE                    0x1800
 #define PAGES_PER_SNAPSHOT                      (SNAPSHOT_BUFFER_SIZE / FLASH_PAGE_LENGTH)
 
-/* Accelerometer constants */
+/* Pressure sensor constants */
 
-#define ACCELERATION_MEASUREMENTS_PER_SNAPSHOT  20         
+#define PRESSURE_MEASUREMENTS_PER_SNAPSHOT      20
 
 /* Useful macros */
 
@@ -192,17 +192,10 @@ typedef struct {
     uint16_t firmwareChunkSize;                   // Length of individual firmware chunks in bytes in which the firmware is sent during an update
     // Device-specific information
     uint8_t state;                                // Device state
-    uint16_t snapshotCount;                       // Number of stored snapshots
-    int16_t x;
-    int16_t y;
-    int16_t z;
-    uint8_t ctrlReg0;
-    uint8_t ctrlReg1;
-    uint8_t ctrlReg2;
-    uint8_t ctrlReg3;
-    uint8_t ctrlReg4;
-    uint8_t ctrlReg5;
-    uint8_t ctrlReg6;
+    uint16_t snapshotCount;    
+    int32_t pressure;                            // Pressure
+    // uint16_t rawPressure;                         // Raw pressure
+    // uint16_t rawTemperature;                      // Raw temperature
 } usbMessageGetStatusOut_t;
 
 // GET_METADATA_MESSAGE
@@ -266,28 +259,25 @@ static volatile bool loadFirmware = false;
 
 /* Firmware version */
 
-static uint8_t firmwareVersion[FIRMWARE_VERSION_LENGTH] = {0, 0, 2};
+static uint8_t firmwareVersion[FIRMWARE_VERSION_LENGTH] = {0, 0, 0};
 
-static uint8_t firmwareDescription[FIRMWARE_DESCRIPTION_LENGTH] = "SnapperGPS-Accelerometer";
+static uint8_t firmwareDescription[FIRMWARE_DESCRIPTION_LENGTH] = "SnapperGPS-PressureSensor";
 
 /* Board version */
 
 static bool legacyBoard = false;
 
-// Accelerometer sensor variables
+// Pressure sensor variables
 
-static int16_t x = 0;
+static int32_t pressure = 0;
+static uint32_t rawPressure = 0;
+static uint32_t rawTemperature = 0;
 
-static int16_t y = 0;
+// static int32_t temperature = 0;
 
-static int16_t z = 0;
-
-static uint8_t ctrlReg[7] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-// Create acceleration arrays at same location as transmitBuffer
-int16_t *accelerationsX = (int16_t*) transmitBuffer;
-int16_t *accelerationsY = (int16_t*) transmitBuffer + ACCELERATION_MEASUREMENTS_PER_SNAPSHOT;
-int16_t *accelerationsZ = (int16_t*) transmitBuffer + 2*ACCELERATION_MEASUREMENTS_PER_SNAPSHOT;
+// Create pressure arrays at same location as transmitBuffer
+int32_t *pressures = (int32_t*) transmitBuffer;
+// uint32_t *temperatures = (uint32_t*) transmitBuffer + PRESSURE_MEASUREMENTS_PER_SNAPSHOT;
 
 /* Interrupt handlers */
 
@@ -505,16 +495,10 @@ int dataReceivedWebUSBCallback(USB_Status_TypeDef status, uint32_t xferred, uint
             AnalogToDigitalConverter_disableBatteryMeasurement();
             AnalogToDigitalConverter_disable();
 
-            statusMsg->x = x;
-            statusMsg->y = y;
-            statusMsg->z = z;
-            statusMsg->ctrlReg0 = ctrlReg[0];
-            statusMsg->ctrlReg1 = ctrlReg[1];
-            statusMsg->ctrlReg2 = ctrlReg[2];
-            statusMsg->ctrlReg3 = ctrlReg[3];
-            statusMsg->ctrlReg4 = ctrlReg[4];
-            statusMsg->ctrlReg5 = ctrlReg[5];
-            statusMsg->ctrlReg6 = ctrlReg[6];
+            statusMsg->pressure = pressure;
+            // statusMsg->rawPressure = rawPressure;
+            // statusMsg->rawTemperature = rawTemperature;
+            // statusMsg->temperature = temperature;
 
             // Assemble message
 
@@ -1045,18 +1029,13 @@ int main(void) {
 
         flash_nextAddress = FLASH_DATA_ADDRESS_OFFSET;
 
-        // Configure accelerometer
+        // Configure pressure sensor
 
-        Accelerometer_enableInterface();
+        PressureSensor_enableInterface();
 
-        // Check if accelerometer is available
-        if (Accelerometer_isAvailable()) {
+        PressureSensor_reset();
 
-            Accelerometer_enableLowPowerMode();
-
-        }
-
-        Accelerometer_disableInterface();
+        PressureSensor_disableInterface();
 
         // Turn off red LED
 
@@ -1122,44 +1101,19 @@ int main(void) {
 
             }
 
-            // Measure acceleration
+            // Measure pressure and temperature
 
             enableRedLED(true);
 
-            Accelerometer_enableInterface();
+            PressureSensor_enableInterface();
 
-            // Check if accelerometer is available
-            if (Accelerometer_isAvailable()) {
+            enableGreenLED(true);
 
-                Accelerometer_selectDataRate(1);
+            rawPressure = PressureSensor_getRawPressure();
+            rawTemperature = PressureSensor_getRawTemperature();
+            pressure = PressureSensor_calculatePressure(rawPressure, rawTemperature);
 
-                // Wait until accelerometer data is available
-                bool dataAvailable = Accelerometer_isNewDataAvailable();
-                while (!dataAvailable) {
-                    Timer_delayMicroseconds(500);
-                    dataAvailable = Accelerometer_isNewDataAvailable();
-                }
-
-                enableGreenLED(true);
-
-                Accelerometer_readXYZ(&x, &y, &z);
-
-                Accelerometer_readCtrlReg(ctrlReg);
-
-                Accelerometer_selectDataRate(0);
-
-            } else {
-
-                x = 0;
-                y = 0;
-                z = 0;
-                for (uint8_t i = 0; i < 7; ++i) {
-                    ctrlReg[i] = 0;
-                }
-
-            }
-
-            Accelerometer_disableInterface();
+            PressureSensor_disableInterface();
 
             enableRedLED(false);
 
@@ -1296,8 +1250,8 @@ int main(void) {
             Timer_disable();
 
             // Counter for number of measurements
-            // A snapshot is triggered whenever this counter reaches ACCELERATION_MEASUREMENTS_PER_SNAPSHOT
-            uint8_t accelerationsCount = ACCELERATION_MEASUREMENTS_PER_SNAPSHOT - 1;
+            // A snapshot is triggered whenever this counter reaches PRESSURE_MEASUREMENTS_PER_SNAPSHOT
+            uint8_t pressuresCount = PRESSURE_MEASUREMENTS_PER_SNAPSHOT - 1;
 
             // Remember if recording has started already
             bool started = false;
@@ -1347,9 +1301,9 @@ int main(void) {
                         } else {
 
                             // Update the real-time counter compare register for the next interrupt
-                            // An interrupt triggers an acceleration measurement
+                            // An interrupt triggers a pressure measurement
 
-                            uint32_t compare = RTC_CompareGet(RTC_COMP0) + (measurementInterval * LFXO_TICKS_PER_SECOND) / ACCELERATION_MEASUREMENTS_PER_SNAPSHOT;
+                            uint32_t compare = RTC_CompareGet(RTC_COMP0) + (measurementInterval * LFXO_TICKS_PER_SECOND) / PRESSURE_MEASUREMENTS_PER_SNAPSHOT;
 
                             RTC_CompareSet(RTC_COMP0, compare);
 
@@ -1363,46 +1317,25 @@ int main(void) {
 
                         Timer_enable();
 
-                        // Read acceleration
+                        // Read pressure and temperature
 
-                        Accelerometer_enableInterface();
+                        PressureSensor_enableInterface();
 
-                        // Check if accelerometer is available
-                        if (Accelerometer_isAvailable()) {
+                        rawPressure = PressureSensor_getRawPressure();
+                        rawTemperature = PressureSensor_getRawTemperature();
+                        pressure = PressureSensor_calculatePressure(rawPressure, rawTemperature);
 
-                            Accelerometer_selectDataRate(1);
+                        PressureSensor_disableInterface();
 
-                            // Wait until accelerometer data is available
-                            bool dataAvailable = Accelerometer_isNewDataAvailable();
-                            while (!dataAvailable) {
-                                Timer_delayMicroseconds(500);
-                                dataAvailable = Accelerometer_isNewDataAvailable();
-                            }
-
-                            Accelerometer_readXYZ(&x, &y, &z);
-
-                            Accelerometer_selectDataRate(0);
-
-                        } else {
-
-                            x = 0;
-                            y = 0;
-                            z = 0;
-
-                        }
-
-                        Accelerometer_disableInterface();
-
-                        // Append new accelerations to arrays
-                        accelerationsX[accelerationsCount] = x;
-                        accelerationsY[accelerationsCount] = y;
-                        accelerationsZ[accelerationsCount] = z;
+                        // Append new pressure and temperature readings to arrays
+                        pressures[pressuresCount] = pressure;
+                        // temperatures[pressuresCount] = temperature;
                         // Increment counter
-                        ++accelerationsCount;
+                        ++pressuresCount;
 
                         // Check if arrays are full
 
-                        if (accelerationsCount >= ACCELERATION_MEASUREMENTS_PER_SNAPSHOT) {
+                        if (pressuresCount >= PRESSURE_MEASUREMENTS_PER_SNAPSHOT) {
 
                             // Enable the ADC
 
@@ -1520,18 +1453,16 @@ int main(void) {
 
                             uint8_t* address = (uint8_t*)SNAPSHOT_BUFFER_LOCATION;
 
-                            // // Overwrite 1st element with accelerations size
-                            address[sizeof(snapshotMetaData_t)] = accelerationsCount;
+                            // // Overwrite 1st element with pressures size
+                            address[sizeof(snapshotMetaData_t)] = pressuresCount;
 
-                            // Overwrite 2nd, 3rd, ... elements with accelerations
-                            for (uint8_t i = 0; i < accelerationsCount; ++i) {
-                                address[sizeof(snapshotMetaData_t) + 1 + i * sizeof(int16_t)] = accelerationsX[i];
-                                address[sizeof(snapshotMetaData_t) + 1 + (ACCELERATION_MEASUREMENTS_PER_SNAPSHOT + i) * sizeof(int16_t)] = accelerationsY[i];
-                                address[sizeof(snapshotMetaData_t) + 1 + (2 * ACCELERATION_MEASUREMENTS_PER_SNAPSHOT + i) * sizeof(int16_t)] = accelerationsZ[i];
+                            // Overwrite 2nd, 3rd, ... elements with pressures
+                            for (uint8_t i = 0; i < pressuresCount; ++i) {
+                                memcpy(&address[sizeof(snapshotMetaData_t) + 1 + i * sizeof(int32_t)], &pressures[i], sizeof(int32_t));
                             }
 
-                            // Reset accelerations count
-                            accelerationsCount = 0;
+                            // Reset pressures count
+                            pressuresCount = 0;
 
                             // Iterate over every page to write for this snapshot
 
