@@ -2,7 +2,7 @@
 
 *Author: Jonas Beuchert*
 
-[The daughter-board](https://github.com/SnapperGPS/snappergps-pressure-sensor-daughterboard) is built around a [MS5837-30BA a high-resolution pressure sensor](https://www.te.com/en/product-CAT-BLPS0017.html).
+[The daughter-board](https://github.com/SnapperGPS/snappergps-pressure-sensor-daughterboard) is built around a [MS5837-30BA high-resolution pressure sensor](https://www.te.com/en/product-CAT-BLPS0017.html).
 It is soldered onto the five pads of the SnapperGPS main board.
 The daughter-board is orientated such that the two pads labeled `VDD` connect.
 The two boards communicate via I2C.
@@ -20,5 +20,5 @@ The measurements are in units of `mbar` (millibar).
 
 **LED patterns**
 
-If the pressure sensor daughter-board is correctly connected and the `SnapperGPS-PressureSensor` firmware is flashed, then the green LED will blink when the receiver is powered via USB.
-If the accelerometer daughter-board is incorrectly or not connected and the `SnapperGPS-PressureSensor` firmware is flashed, then the red LED will blink when the receiver is powered via USB.
+If the pressure-sensor daughter-board is correctly connected and the `SnapperGPS-PressureSensor` firmware is flashed, then the green LED will blink when the receiver is powered via USB.
+If the pressure-sensor daughter-board is incorrectly or not connected and the `SnapperGPS-PressureSensor` firmware is flashed, then the red LED will blink when the receiver is powered via USB.
